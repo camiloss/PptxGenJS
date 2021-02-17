@@ -1,4 +1,4 @@
-/* PptxGenJS 3.5.0-beta @ 2021-01-14T05:37:45.220Z */
+/* PptxGenJS 3.5.0-beta @ 2021-02-16T11:44:01.200Z */
 import JSZip from 'jszip';
 
 /**
@@ -1509,13 +1509,13 @@ function slideObjectToXml(slide) {
                 // so a simple loop below in XML building wont suffice to build table correctly.
                 // We have to build an actual grid now
                 /*
-                    EX: (A0:rowspan=3, B1:rowspan=2, C1:colspan=2)
-
-                    /------|------|------|------\
-                    |  A0  |  B0  |  C0  |  D0  |
-                    |      |  B1  |  C1  |      |
-                    |      |      |  C2  |  D2  |
-                    \------|------|------|------/
+                  EX: (A0:rowspan=3, B1:rowspan=2, C1:colspan=2)
+        
+                  /------|------|------|------\
+                  |  A0  |  B0  |  C0  |  D0  |
+                  |      |  B1  |  C1  |      |
+                  |      |      |  C2  |  D2  |
+                  \------|------|------|------/
                 */
                 // A: add _hmerge cell for colspan. should reserve rowspan
                 arrTabRows_1.forEach(function (cells) {
@@ -1694,30 +1694,60 @@ function slideObjectToXml(slide) {
                     slideItemObj.options._bodyProp.bIns = valToPts(slideItemObj.options.margin);
                     slideItemObj.options._bodyProp.tIns = valToPts(slideItemObj.options.margin);
                 }
-                // A: Start SHAPE =======================================================
-                strSlideXml += '<p:sp>';
-                // B: The addition of the "txBox" attribute is the sole determiner of if an object is a shape or textbox
-                strSlideXml += "<p:nvSpPr><p:cNvPr id=\"" + (idx + 2) + "\" name=\"" + shapeName + "\">";
-                // <Hyperlink>
-                if (slideItemObj.options.hyperlink && slideItemObj.options.hyperlink.url)
-                    strSlideXml +=
-                        '<a:hlinkClick r:id="rId' +
-                            slideItemObj.options.hyperlink._rId +
-                            '" tooltip="' +
-                            (slideItemObj.options.hyperlink.tooltip ? encodeXmlEntities(slideItemObj.options.hyperlink.tooltip) : '') +
-                            '"/>';
-                if (slideItemObj.options.hyperlink && slideItemObj.options.hyperlink.slide)
-                    strSlideXml +=
-                        '<a:hlinkClick r:id="rId' +
-                            slideItemObj.options.hyperlink._rId +
-                            '" tooltip="' +
-                            (slideItemObj.options.hyperlink.tooltip ? encodeXmlEntities(slideItemObj.options.hyperlink.tooltip) : '') +
-                            '" action="ppaction://hlinksldjump"/>';
-                // </Hyperlink>
-                strSlideXml += '</p:cNvPr>';
-                strSlideXml += '<p:cNvSpPr' + (slideItemObj.options && slideItemObj.options.isTextBox ? ' txBox="1"/>' : '/>');
-                strSlideXml += "<p:nvPr>" + (slideItemObj._type === 'placeholder' ? genXmlPlaceholder(slideItemObj) : genXmlPlaceholder(placeholderObj)) + "</p:nvPr>";
-                strSlideXml += '</p:nvSpPr><p:spPr>';
+                if (slideItemObj.options.line.isConnector) {
+                    // convert user defined sId of sourceId and targetId to 'id' of shape
+                    // 3.1: Handle connector line
+                    var sourceId = null;
+                    var targetId = null;
+                    if (slideItemObj.options.line.sourceId != null) {
+                        sourceId = slide._slideObjects.findIndex(function (d) { return d.options.sId === slideItemObj.options.line.sourceId; });
+                        sourceId = sourceId + 2;
+                    }
+                    if (slideItemObj.options.line.targetId != null) {
+                        targetId = slide._slideObjects.findIndex(function (d) { return d.options.sId === slideItemObj.options.line.targetId; });
+                        targetId = targetId + 2;
+                    }
+                    // A: Start Connector =======================================================
+                    strSlideXml += '<p:cxnSp>';
+                    strSlideXml += '<p:nvCxnSpPr><p:cNvPr id="' + (idx + 2) + '" name="Connector ' + (idx + 1) + '"/>';
+                    strSlideXml += '<p:cNvCxnSpPr>';
+                    // B: Assign Starting and Ending shape for connections ======================
+                    if (sourceId !== null) {
+                        strSlideXml += '<a:stCxn id="' + sourceId + '" idx="' + slideItemObj.options.line.sourceAnchorPos + '"/>';
+                    }
+                    if (targetId !== null) {
+                        strSlideXml += '<a:endCxn id="' + targetId + '" idx="' + slideItemObj.options.line.targetAnchorPos + '"/>';
+                    }
+                    strSlideXml += '</p:cNvCxnSpPr><p:nvPr/>';
+                    strSlideXml += '</p:nvCxnSpPr>';
+                }
+                else {
+                    // A: Start SHAPE =======================================================
+                    strSlideXml += '<p:sp>';
+                    // B: The addition of the "txBox" attribute is the sole determiner of if an object is a shape or textbox
+                    strSlideXml += "<p:nvSpPr><p:cNvPr id=\"" + (idx + 2) + "\" name=\"" + shapeName + "\">";
+                    // <Hyperlink>
+                    if (slideItemObj.options.hyperlink && slideItemObj.options.hyperlink.url)
+                        strSlideXml +=
+                            '<a:hlinkClick r:id="rId' +
+                                slideItemObj.options.hyperlink._rId +
+                                '" tooltip="' +
+                                (slideItemObj.options.hyperlink.tooltip ? encodeXmlEntities(slideItemObj.options.hyperlink.tooltip) : '') +
+                                '"/>';
+                    if (slideItemObj.options.hyperlink && slideItemObj.options.hyperlink.slide)
+                        strSlideXml +=
+                            '<a:hlinkClick r:id="rId' +
+                                slideItemObj.options.hyperlink._rId +
+                                '" tooltip="' +
+                                (slideItemObj.options.hyperlink.tooltip ? encodeXmlEntities(slideItemObj.options.hyperlink.tooltip) : '') +
+                                '" action="ppaction://hlinksldjump"/>';
+                    // </Hyperlink>
+                    strSlideXml += '</p:cNvPr>';
+                    strSlideXml += '<p:cNvSpPr' + (slideItemObj.options && slideItemObj.options.isTextBox ? ' txBox="1"/>' : '/>');
+                    strSlideXml += "<p:nvPr>" + (slideItemObj._type === 'placeholder' ? genXmlPlaceholder(slideItemObj) : genXmlPlaceholder(placeholderObj)) + "</p:nvPr>";
+                    strSlideXml += '</p:nvSpPr>';
+                }
+                strSlideXml += '<p:spPr>';
                 strSlideXml += "<a:xfrm" + locationAttr + ">";
                 strSlideXml += "<a:off x=\"" + x + "\" y=\"" + y + "\"/>";
                 strSlideXml += "<a:ext cx=\"" + cx + "\" cy=\"" + cy + "\"/></a:xfrm>";
@@ -1768,21 +1798,26 @@ function slideObjectToXml(slide) {
                     strSlideXml += '</a:effectLst>';
                 }
                 /* TODO: FUTURE: Text wrapping (copied from MS-PPTX export)
-                    // Commented out b/c i'm not even sure this works - current code produces text that wraps in shapes and textboxes, so...
-                    if ( slideItemObj.options.textWrap ) {
-                        strSlideXml += '<a:extLst>'
-                                    + '<a:ext uri="{C572A759-6A51-4108-AA02-DFA0A04FC94B}">'
-                                    + '<ma14:wrappingTextBoxFlag xmlns:ma14="http://schemas.microsoft.com/office/mac/drawingml/2011/main" val="1"/>'
-                                    + '</a:ext>'
-                                    + '</a:extLst>';
-                    }
-                    */
+                  // Commented out b/c i'm not even sure this works - current code produces text that wraps in shapes and textboxes, so...
+                  if ( slideItemObj.options.textWrap ) {
+                    strSlideXml += '<a:extLst>'
+                          + '<a:ext uri="{C572A759-6A51-4108-AA02-DFA0A04FC94B}">'
+                          + '<ma14:wrappingTextBoxFlag xmlns:ma14="http://schemas.microsoft.com/office/mac/drawingml/2011/main" val="1"/>'
+                          + '</a:ext>'
+                          + '</a:extLst>';
+                  }
+                  */
                 // B: Close shape Properties
                 strSlideXml += '</p:spPr>';
                 // C: Add formatted text (text body "bodyPr")
                 strSlideXml += genXmlTextBody(slideItemObj);
                 // LAST: Close SHAPE =======================================================
-                strSlideXml += '</p:sp>';
+                if (slideItemObj.options.line.isConnector) {
+                    strSlideXml += '</p:cxnSp>';
+                }
+                else {
+                    strSlideXml += '</p:sp>';
+                }
                 break;
             case SLIDE_OBJECT_TYPES.image:
                 var sizing = slideItemObj.options.sizing, rounding = slideItemObj.options.rounding, width = cx, height = cy;
@@ -2240,28 +2275,28 @@ function genXmlTextRun(textObj) {
     // Why? The size of the lineBreak wont match (eg: below it will be 18px instead of the correct 36px)
     // Do this:
     /*
-        <a:p>
-            <a:pPr algn="r"/>
-            <a:endParaRPr lang="en-US" sz="3600" dirty="0"/>
-        </a:p>
+      <a:p>
+        <a:pPr algn="r"/>
+        <a:endParaRPr lang="en-US" sz="3600" dirty="0"/>
+      </a:p>
     */
     // NOT this:
     /*
-        <a:p>
-            <a:pPr algn="r"/>
-            <a:r>
-                <a:rPr lang="en-US" sz="3600" dirty="0">
-                    <a:solidFill>
-                        <a:schemeClr val="accent5"/>
-                    </a:solidFill>
-                    <a:latin typeface="Times" pitchFamily="34" charset="0"/>
-                    <a:ea typeface="Times" pitchFamily="34" charset="-122"/>
-                    <a:cs typeface="Times" pitchFamily="34" charset="-120"/>
-                </a:rPr>
-                <a:t></a:t>
-            </a:r>
-            <a:endParaRPr lang="en-US" dirty="0"/>
-        </a:p>
+      <a:p>
+        <a:pPr algn="r"/>
+        <a:r>
+          <a:rPr lang="en-US" sz="3600" dirty="0">
+            <a:solidFill>
+              <a:schemeClr val="accent5"/>
+            </a:solidFill>
+            <a:latin typeface="Times" pitchFamily="34" charset="0"/>
+            <a:ea typeface="Times" pitchFamily="34" charset="-122"/>
+            <a:cs typeface="Times" pitchFamily="34" charset="-120"/>
+          </a:rPr>
+          <a:t></a:t>
+        </a:r>
+        <a:endParaRPr lang="en-US" dirty="0"/>
+      </a:p>
     */
     // Return paragraph with text run
     return textObj.text ? "<a:r>" + genXmlTextRunProperties(textObj.options, false) + "<a:t>" + encodeXmlEntities(textObj.text) + "</a:t></a:r>" : '';
@@ -2377,13 +2412,13 @@ function genXmlTextBody(slideObj) {
             strSlideXml += '<a:lstStyle/>';
     }
     /* STEP 3: Modify slideObj.text to array
-        CASES:
-        addText( 'string' ) // string
-        addText( 'line1\n line2' ) // string with lineBreak
-        addText( {text:'word1'} ) // TextProps object
-        addText( ['barry','allen'] ) // array of strings
-        addText( [{text:'word1'}, {text:'word2'}] ) // TextProps object array
-        addText( [{text:'line1\n line2'}, {text:'end word'}] ) // TextProps object array with lineBreak
+      CASES:
+      addText( 'string' ) // string
+      addText( 'line1\n line2' ) // string with lineBreak
+      addText( {text:'word1'} ) // TextProps object
+      addText( ['barry','allen'] ) // array of strings
+      addText( [{text:'word1'}, {text:'word2'}] ) // TextProps object array
+      addText( [{text:'line1\n line2'}, {text:'end word'}] ) // TextProps object array with lineBreak
     */
     if (typeof slideObj.text === 'string' || typeof slideObj.text === 'number') {
         // Handle cases 1,2
@@ -3039,16 +3074,16 @@ function createSlideObject(slideDef, target) {
                 // TODO: ISSUE#599 - only text is suported now (add more below)
                 //else if (object[key].image) addImageDefinition(tgt, object[key].image)
                 /* 20200120: So... image placeholders go into the "slideLayoutN.xml" file and addImage doesnt do this yet...
-                    <p:sp>
+                  <p:sp>
                   <p:nvSpPr>
-                    <p:cNvPr id="7" name="Picture Placeholder 6">
-                      <a:extLst>
-                        <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">
-                          <a16:creationId xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" id="{CE1AE45D-8641-0F4F-BDB5-080E69CCB034}"/>
-                        </a:ext>
-                      </a:extLst>
-                    </p:cNvPr>
-                    <p:cNvSpPr>
+                  <p:cNvPr id="7" name="Picture Placeholder 6">
+                    <a:extLst>
+                    <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">
+                      <a16:creationId xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" id="{CE1AE45D-8641-0F4F-BDB5-080E69CCB034}"/>
+                    </a:ext>
+                    </a:extLst>
+                  </p:cNvPr>
+                  <p:cNvSpPr>
                 */
             }
         });
@@ -3130,16 +3165,16 @@ function addChartDefinition(target, type, data, opt) {
     // `type` exists in CHART_TYPE
     // Array.isArray(data)
     /*
-        if ( Array.isArray(rel.data) && rel.data.length > 0 && typeof rel.data[0] === 'object'
-            && rel.data[0].labels && Array.isArray(rel.data[0].labels)
-            && rel.data[0].values && Array.isArray(rel.data[0].values) ) {
-            obj = rel.data[0];
-        }
-        else {
-            console.warn("USAGE: addChart( 'pie', [ {name:'Sales', labels:['Jan','Feb'], values:[10,20]} ], {x:1, y:1} )");
-            return;
-        }
-        */
+      if ( Array.isArray(rel.data) && rel.data.length > 0 && typeof rel.data[0] === 'object'
+        && rel.data[0].labels && Array.isArray(rel.data[0].labels)
+        && rel.data[0].values && Array.isArray(rel.data[0].values) ) {
+        obj = rel.data[0];
+      }
+      else {
+        console.warn("USAGE: addChart( 'pie', [ {name:'Sales', labels:['Jan','Feb'], values:[10,20]} ], {x:1, y:1} )");
+        return;
+      }
+      */
     // STEP 2: Set default options/decode user options
     // A: Core
     options._type = type;
@@ -3524,6 +3559,7 @@ function addNotesDefinition(target, notes) {
 function addShapeDefinition(target, shapeName, opts) {
     var options = typeof opts === 'object' ? opts : {};
     options.line = options.line || { type: 'none' };
+    options.sId = options.sId || (options.sId === 0 ? 0 : null);
     var newObject = {
         _type: SLIDE_OBJECT_TYPES.text,
         shape: shapeName || SHAPE_TYPE.RECTANGLE,
@@ -3542,6 +3578,12 @@ function addShapeDefinition(target, shapeName, opts) {
         dashType: options.line.dashType || 'solid',
         beginArrowType: options.line.beginArrowType || null,
         endArrowType: options.line.endArrowType || null,
+        // Handle connectors related options
+        sourceId: options.line.sourceId || null,
+        targetId: options.line.targetId || null,
+        sourceAnchorPos: options.line.sourceAnchorPos || (options.line.sourceAnchorPos === 0 ? 0 : null),
+        targetAnchorPos: options.line.targetAnchorPos || (options.line.targetAnchorPos === 0 ? 0 : null),
+        isConnector: options.line && (options.line.sourceId != null || options.line.targetId != null)
     };
     if (typeof options.line === 'object' && options.line.type !== 'none')
         options.line = newLineOpts;
@@ -3595,8 +3637,8 @@ function addTableDefinition(target, tableRows, options, slideLayout, presLayout,
         // TODO: FUTURE: This is wacky and wont function right (shows .w value when there is none from demo.js?!) 20191219
         /*
         if (opt.w && opt.colW) {
-            console.warn('addTable: please use either `colW` or `w` - not both (table will use `colW` and ignore `w`)')
-            console.log(`${opt.w} ${opt.colW}`)
+          console.warn('addTable: please use either `colW` or `w` - not both (table will use `colW` and ignore `w`)')
+          console.log(`${opt.w} ${opt.colW}`)
         }
         */
     }
@@ -3705,10 +3747,10 @@ function addTableDefinition(target, tableRows, options, slideLayout, presLayout,
     }
     // Case 2: Table margins
     /* FIXME: add `_margin` option to slide options
-        else if ( addNewSlide._margin ) {
-            if ( Array.isArray(addNewSlide._margin) ) arrTableMargin = addNewSlide._margin;
-            else if ( !isNaN(Number(addNewSlide._margin)) ) arrTableMargin = [Number(addNewSlide._margin), Number(addNewSlide._margin), Number(addNewSlide._margin), Number(addNewSlide._margin)];
-        }
+      else if ( addNewSlide._margin ) {
+        if ( Array.isArray(addNewSlide._margin) ) arrTableMargin = addNewSlide._margin;
+        else if ( !isNaN(Number(addNewSlide._margin)) ) arrTableMargin = [Number(addNewSlide._margin), Number(addNewSlide._margin), Number(addNewSlide._margin), Number(addNewSlide._margin)];
+      }
     */
     /**
      * Calc table width depending upon what data we have - several scenarios exist (including bad data, eg: colW doesnt match col count)
@@ -3760,11 +3802,11 @@ function addTableDefinition(target, tableRows, options, slideLayout, presLayout,
         row.forEach(function (cell, idy) {
             // A: Transform cell data if needed
             /* Table rows can be an object or plain text - transform into object when needed
-                // EX:
-                var arrTabRows1 = [
-                    [ { text:'A1\nA2', options:{rowspan:2, fill:'99FFCC'} } ]
-                    ,[ 'B2', 'C2', 'D2', 'E2' ]
-                ]
+              // EX:
+              var arrTabRows1 = [
+                [ { text:'A1\nA2', options:{rowspan:2, fill:'99FFCC'} } ]
+                ,[ 'B2', 'C2', 'D2', 'E2' ]
+              ]
             */
             if (typeof cell === 'number' || typeof cell === 'string') {
                 // Grab table formatting `opts` to use here so text style/format inherits as it should
